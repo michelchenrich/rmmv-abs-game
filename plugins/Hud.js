@@ -1,22 +1,32 @@
-(function() {
-  var superInitialize = Scene_Map.prototype.initialize;
-  Scene_Map.prototype.initialize = function() {
-    superInitialize.call(this, arguments);
-    this.hud = new Hud();
-  };
+function patch(type, patches) {
+  for(let key in patches) {
+    let originalMethod = type.prototype[key];
+    type.prototype[key] = patches[key].call(undefined, originalMethod);
+  }
+}
 
-  var superMapCreateDisplayObjects = Scene_Map.prototype.createDisplayObjects;
-  Scene_Map.prototype.createDisplayObjects = function() {
-    superMapCreateDisplayObjects.call(this, arguments);
-    this.hud.addSelfTo(this);
-  };
+patch(Scene_Map, {
+  initialize: function(original) {
+    return function() {
+      original.call(this, arguments);
+      this.hud = new Hud();
+    };
+  },
 
-  var superUpdate = Scene_Map.prototype.update;
-  Scene_Map.prototype.update = function() {
-    this.hud.update();
-    superUpdate.call(this, arguments);
-  };
-})();
+  createDisplayObjects: function(original) {
+    return function() {
+      original.call(this, arguments);
+      this.hud.addSelfTo(this);
+    }
+  },
+
+  update: function(original) {
+    return function() {
+      this.hud.update();
+      original.call(this, arguments);
+    }
+  }
+});
 
 function extend(type, newMethods) {
   for(let key in newMethods)
