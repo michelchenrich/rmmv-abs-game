@@ -49,13 +49,15 @@ define("StatusBar", {
   },
 
   update: function() {
-    if(this.oldValue == this.percentFunction.call())
+    let percent = this.percentFunction.call();
+
+    if(this.oldValue == percent)
       return;
 
     this.drawBackground();
-    this.drawForeground();
+    this.drawForeground(percent);
 
-    this.oldValue == this.percentFunction.call();
+    this.oldValue == percent;
   },
 
   drawBorder: function() {
@@ -68,8 +70,8 @@ define("StatusBar", {
     this.sprite.bitmap.fillRect(5, 5, 100, 20, "dark-" + this.color);
   },
 
-  drawForeground: function() {
-    this.sprite.bitmap.fillRect(5, 5, this.percentFunction.call(), 20, this.color);
+  drawForeground: function(percent) {
+    this.sprite.bitmap.fillRect(5, 5, percent, 20, this.color);
   }
 });
 
