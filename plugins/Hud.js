@@ -51,11 +51,10 @@ define("StatusBar", {
   update: function() {
     let percent = this.percentFunction.call();
 
-    if(this.oldValue == percent)
+    if (this.oldValue == percent)
       return;
 
-    this.drawEmptyPart();
-    this.drawFilledPart(percent);
+    this.drawFilling(percent);
 
     this.oldValue == percent;
   },
@@ -64,6 +63,13 @@ define("StatusBar", {
     this.sprite.bitmap.fillRect(0, 0, 110, 30, "black"); // 1px width
     this.sprite.bitmap.fillRect(1, 1, 108, 28, "white"); // 3px width
     this.sprite.bitmap.fillRect(4, 4, 102, 22, "black"); // 1px width 
+  },
+
+  drawFilling: function(percent) {
+    if (percent < 100)
+      this.drawEmptyPart();
+
+    this.drawFilledPart(percent);
   },
 
   drawEmptyPart: function() {
