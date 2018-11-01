@@ -18,15 +18,20 @@
   };
 })();
 
-(function() {
-  Game_Player.prototype.getHealthPercentage = function() {
-    return $gameActors._data[1].hp / $gameActors._data[1].mhp * 100.0; 
-  };
+function extend(type, newMethods) {
+  for(let key in newMethods)
+    type.prototype[key] = newMethods[key];
+}
 
-  Game_Player.prototype.getMagicPercentage = function() {
+extend(Game_Player, {
+  getHealthPercentage: function() {
+    return $gameActors._data[1].hp / $gameActors._data[1].mhp * 100.0; 
+  },
+
+  getMagicPercentage: function() {
     return $gameActors._data[1].mp / $gameActors._data[1].mmp * 100.0; 
-  };
-})();
+  }
+});
 
 class StatusBar {
   constructor(position, color, percentFunction) {
