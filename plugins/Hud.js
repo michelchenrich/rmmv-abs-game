@@ -6,25 +6,19 @@ function patch(type, patches) {
 }
 
 patch(Scene_Map, {
-  initialize: function(original) {
-    return function() {
-      original.call(this, arguments);
-      this.hud = new Hud();
-    };
+  initialize: original => function() {
+    original.call(this, arguments);
+    this.hud = new Hud();
   },
 
-  createDisplayObjects: function(original) {
-    return function() {
-      original.call(this, arguments);
-      this.hud.addSelfTo(this);
-    }
+  createDisplayObjects: original => function() {
+    original.call(this, arguments);
+    this.hud.addSelfTo(this);
   },
 
-  update: function(original) {
-    return function() {
-      this.hud.update();
-      original.call(this, arguments);
-    }
+  update: original => function() {
+    this.hud.update();
+    original.call(this, arguments);
   }
 });
 
