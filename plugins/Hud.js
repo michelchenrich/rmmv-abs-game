@@ -1,101 +1,113 @@
-function patch(type, patches) {
-  for(let key in patches) {
-    let originalMethod = type.prototype[key];
-    type.prototype[key] = patches[key].call(undefined, originalMethod);
-  }
-}
-
 patch(Scene_Map, {
-  initialize: original => function() {
-    original.call(this, arguments);
-    this.hud = new Hud();
-  },
-
   createDisplayObjects: original => function() {
     original.call(this, arguments);
-    this.hud.addSelfTo(this);
-  },
-
-  update: original => function() {
-    this.hud.update();
-    original.call(this, arguments);
+    new Hud().addSelfTo(this);
   }
 });
 
-function extend(type, newMethods) {
-  for(let key in newMethods)
-    type.prototype[key] = newMethods[key];
-}
+patch(Game_Actor, {
+  initialize: original => function(actorId) {
+    original.call(this, actorId);
+    this.hpListeners = [];
+  },
 
-extend(Game_Player, {
+  gainHp: original => function(amount) {
+    original.call(this, amount);
+    this.hpListeners.forEach(hpListener => hpListener.onHealthChange(this));
+  }
+});
+
+extend(Game_Actor, {
+  addHealthListener: function(hpListener) {
+    this.hpListeners.push(hpListener);
+  },
+
+  takeDamage: function(amount) {
+    if (!this.isAlive())
+      return;
+
+    this.gainHp(amount * -1);
+
+    if (this.isDead())
+        this.performCollapse();
+  },
+
   getHealthPercentage: function() {
-    return $gameActors._data[1].hp / $gameActors._data[1].mhp * 100.0; 
+    return this.hp / this.mhp * 100.0; 
   },
 
   getMagicPercentage: function() {
-    return $gameActors._data[1].mp / $gameActors._data[1].mmp * 100.0; 
+    return this.mp / this.mmp * 100.0; 
   }
 });
 
+extend(Game_Player, {
+  getActor: function() {
+    return $gameActors._data[1];
+  }
+});
+
+const barWidthMultiplier = 2;
+const barWidth = 100 * barWidthMultiplier;
+const barHeight = 20 * barWidthMultiplier;
 class StatusBar {
-  constructor(position, color, percentFunction) {
-    this.color = color;
-    this.percentFunction = percentFunction;
-    this.sprite = new Sprite(new Bitmap(110, 30));
-    this.sprite.move(4, 4 + (35 * (position - 1)));
+  constructor(position, filledColor, emptyColor, percent) {
+    this.emptyColor = emptyColor;
+    this.filledColor = filledColor;
+    this.sprite = new Sprite(new Bitmap(barWidth + 10, barHeight + 10));
+    this.sprite.move(4, 4 + ((barHeight + 15) * (position - 1)));
     this.drawBorder();
+    this.drawFilling(percent);
   }
 
   addSelfTo(scene) {
     scene.addChild(this.sprite);
   }
 
-  update() {
-    let percent = this.percentFunction.call();
-
-    if (this.oldValue == percent)
-      return;
-
+  setPercentage(percent) {
     this.drawFilling(percent);
-
-    this.oldValue == percent;
   }
 
   drawBorder() {
-    this.sprite.bitmap.fillRect(0, 0, 110, 30, "black"); // 1px width
-    this.sprite.bitmap.fillRect(1, 1, 108, 28, "white"); // 3px width
-    this.sprite.bitmap.fillRect(4, 4, 102, 22, "black"); // 1px width 
+    this.sprite.bitmap.fillRect(0, 0, barWidth + 10, barHeight + 10, "black"); // 1px width
+    this.sprite.bitmap.fillRect(1, 1, barWidth + 8, barHeight + 8, "white"); // 3px width
+    this.sprite.bitmap.fillRect(4, 4, barWidth + 2, barHeight + 2, "black"); // 1px width 
   }
 
   drawFilling(percent) {
     if (percent < 100)
-      this.drawEmptyPart();
+      this.drawEmptyPart(percent);
 
     this.drawFilledPart(percent);
   }
 
-  drawEmptyPart() {
-    this.sprite.bitmap.fillRect(5, 5, 100, 20, "dark-" + this.color);
+  drawEmptyPart(percent) {
+    let filledWidth = percent * barWidthMultiplier;
+    this.sprite.bitmap.fillRect(5 + filledWidth, 5, 1, barHeight, "black");
+    this.sprite.bitmap.fillRect(5 + filledWidth + 1, 5, barWidth - filledWidth, barHeight, this.emptyColor);
   }
 
   drawFilledPart(percent) {
-    this.sprite.bitmap.fillRect(5, 5, percent, 20, this.color);
+    this.sprite.bitmap.fillRect(5, 5, percent * barWidthMultiplier, barHeight, this.filledColor);
+    this.sprite.bitmap.drawText(Math.ceil(percent) + "%", 5, 5, barWidth, barHeight);
   }
 }
 
 class Hud {
   constructor() {
+    let actor = $gamePlayer.getActor();
     this.bars = [
-      new StatusBar(1, "green", $gamePlayer.getHealthPercentage),
-      new StatusBar(2, "purple", $gamePlayer.getMagicPercentage)
+      new StatusBar(1, "green", "darkred", actor.getHealthPercentage()),
+      new StatusBar(2, "purple", "midnightblue", actor.getMagicPercentage())
     ];
+    actor.addHealthListener(this);
   }
 
   addSelfTo(scene) {
     this.bars.forEach(bar => bar.addSelfTo(scene));
   }
 
-  update() {
-    this.bars.forEach(bar => bar.update());
+  onHealthChange(actor) {
+    this.bars[0].setPercentage(actor.getHealthPercentage());
   }
 }
