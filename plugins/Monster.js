@@ -50,7 +50,12 @@ class Monster extends Game_Event {
     super(mapId, eventId);
     this.attackCooldown = 60;
     this.attackCooldownCount = 0;
+    this.maxHealthPoints = healthPoints;
     this.healthPoints = healthPoints;
+  }
+
+  getHealthPercentage() {
+    return this.healthPoints / this.maxHealthPoints * 100.0;
   }
 
   isAttackable() {
