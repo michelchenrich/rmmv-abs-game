@@ -53,9 +53,13 @@ class Monster extends Game_Event {
     this.healthPoints = healthPoints;
   }
 
+  isAttackable() {
+    return this.isAlive();
+  } 
+
   start() {
     this.takeDamage(30);
-    this.requestAnimation(1);
+    this.requestAnimation(121);
   }
 
   takeDamage(amount) {

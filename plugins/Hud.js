@@ -1,18 +1,30 @@
+extend(Game_Character, {
+  isAttackable: function() {
+    return false;
+  }
+});
+
 patch(Scene_Map, {
   createDisplayObjects: original => function() {
-    original.call(this, arguments);
-    new Hud().addSelfTo(this);
+    original.apply(this, arguments);
+    this.hud = new Hud();
+    this.hud.addSelfTo(this);
+  },
+
+  update: original => function() {
+    original.apply(this, arguments);
+    this.hud.update(); 
   }
 });
 
 patch(Game_Actor, {
   initialize: original => function(actorId) {
-    original.call(this, actorId);
+    original.apply(this, arguments);
     this.hpListeners = [];
   },
 
   gainHp: original => function(amount) {
-    original.call(this, amount);
+    original.apply(this, arguments);
     this.hpListeners.forEach(hpListener => hpListener.onHealthChange(this));
   }
 });
@@ -44,6 +56,12 @@ extend(Game_Actor, {
 extend(Game_Player, {
   getActor: function() {
     return $gameActors._data[1];
+  },
+
+  canPerformAttack: function() {
+    let nextX = $gameMap.roundXWithDirection(this.x, this.direction());
+    let nextY = $gameMap.roundYWithDirection(this.y, this.direction());
+    return $gameMap.eventsXy(nextX, nextY).filter(e => e.isAttackable()).length > 0;
   }
 });
 
@@ -93,18 +111,69 @@ class StatusBar {
   }
 }
 
+class ActionButton {
+  constructor() {
+    this.sprite = new Sprite(new Bitmap(100, 100));
+    this.sprite.move(240, 4);
+    this.drawButtonBorder();
+  }
+
+  addSelfTo(scene) {
+    scene.addChild(this.sprite);
+  }
+
+  drawButtonBorder() {
+    this.sprite.bitmap.drawCircle(50, 50, 50, "black");
+    this.sprite.bitmap.drawCircle(50, 50, 49, "white");
+    this.sprite.bitmap.drawCircle(50, 50, 46, "black");
+  }
+
+  setToAttack() {
+    this.sprite.bitmap.drawCircle(50, 50, 45, "darkred");
+    this.sprite.bitmap.drawText("Attack", 10, 10, 80, 80, "center");
+  }
+
+  setToNothing() {
+    this.sprite.bitmap.drawCircle(50, 50, 45, "black");
+    this.sprite.bitmap.drawText("Nothing", 10, 10, 80, 80, "center");
+  }
+}
+
 class Hud {
   constructor() {
-    let actor = $gamePlayer.getActor();
+    this.player = $gamePlayer;
+    this.lastPossibleAction = "";
+
+    let actor = this.player.getActor();
     this.bars = [
       new StatusBar(1, "green", "darkred", actor.getHealthPercentage()),
       new StatusBar(2, "purple", "midnightblue", actor.getMagicPercentage())
     ];
     actor.addHealthListener(this);
+
+    this.actionButton = new ActionButton();
   }
 
   addSelfTo(scene) {
     this.bars.forEach(bar => bar.addSelfTo(scene));
+    this.actionButton.addSelfTo(scene);
+  }
+
+  update() {
+    let possibleAction = this.determineCurrentPossibleAction();
+    if (this.lastPossibleAction !== possibleAction)
+      if (possibleAction === "attack")
+        this.actionButton.setToAttack();
+      else
+        this.actionButton.setToNothing();
+    this.lastPossibleAction = possibleAction;
+  }
+
+  determineCurrentPossibleAction() {
+    if (this.player.canPerformAttack())
+      return "attack";
+    else
+      return "";
   }
 
   onHealthChange(actor) {
